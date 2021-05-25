@@ -1,10 +1,11 @@
 package com.epam.rd.autocode.dao;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface Dao<T, Id> {
 
-    T getById(Id Id);
+    Optional<T> getById(Id Id);
 
     List<T> getAll();
 
