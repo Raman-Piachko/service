@@ -9,34 +9,32 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.epam.rd.autocode.util.BigIntegerUtil.getBigInteger;
+import static com.epam.rd.autocode.dao.util.BigIntegerUtil.getBigInteger;
 
 public class DepartmentDaoImpl implements DepartmentDao {
-    private static final String SQL_QUERY_SELECT_BY_ID = "SELECT * FROM department WHERE id = ?";
-    private static final String SQL_QUERY_SELECT_ALL = "select * from DEPARTMENT";
-    private static final String SQL_QUERY_DELETE = "delete from DEPARTMENT where ID = '%s'";
-    private static final String SQL_QUERY_UPDATE = "update DEPARTMENT set NAME = '%s', LOCATION = '%s' where ID = '%s'";
-    private static final String SQL_QUERY_INSERT = "insert into DEPARTMENT (ID, NAME, LOCATION) values ('%s', '%s', '%s')";
+    private static final String SQL_QUERY_SELECT_BY_ID = "SELECT id, name, location FROM department WHERE id = ?";
+    private static final String SQL_QUERY_SELECT_ALL = "SELECT id, name, location FROM department";
+    private static final String SQL_QUERY_DELETE = "DELETE FROM department WHERE id = ?";
+    private static final String SQL_QUERY_UPDATE = "UPDATE department SET name = ?, location = ? WHERE id = ?";
+    private static final String SQL_QUERY_INSERT = "INSERT INTO department VALUES (?, ?, ?)";
 
-    private static final String COLUMN_ID = "ID";
-    private static final String COLUMN_NAME = "NAME";
-    private static final String COLUMN_LOCATION = "LOCATION";
+    private static final String COLUMN_ID = "id";
+    private static final String COLUMN_NAME = "name";
+    private static final String COLUMN_LOCATION = "location";
 
     @Override
     public Optional<Department> getById(BigInteger Id) {
         Optional<Department> department = Optional.empty();
         try (Connection connection = ConnectionSource.instance().createConnection();
              PreparedStatement statement = connection.prepareStatement(SQL_QUERY_SELECT_BY_ID)) {
-            statement.setLong(1, Id.longValue());
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    department = Optional.of(createDepartment(resultSet));
-                }
+            statement.setObject(1, Id);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                department = Optional.of(createDepartment(resultSet));
             }
             return department;
         } catch (SQLException e) {
@@ -48,8 +46,8 @@ public class DepartmentDaoImpl implements DepartmentDao {
     public List<Department> getAll() {
         List<Department> departments = new ArrayList<>();
         try (Connection connection = ConnectionSource.instance().createConnection();
-             PreparedStatement statement = connection.prepareStatement(SQL_QUERY_SELECT_ALL);
-             ResultSet resultSet = statement.executeQuery()) {
+             PreparedStatement statement = connection.prepareStatement(SQL_QUERY_SELECT_ALL)) {
+            ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 Department department = new Department(
                         new BigInteger(resultSet.getString(COLUMN_ID)),
@@ -65,34 +63,49 @@ public class DepartmentDaoImpl implements DepartmentDao {
 
     @Override
     public Department save(Department department) {
+        String name = department.getName();
+        BigInteger id = department.getId();
+        String location = department.getLocation();
+        Optional<Department> foundDepartment = getById(department.getId());
+
+        if (foundDepartment.isPresent()) {
+            update(id, name, location);
+        } else {
+            insert(id, name, location);
+        }
+        return department;
+    }
+
+    private void insert(BigInteger id, String name, String location) {
         try (Connection connection = ConnectionSource.instance().createConnection();
-             Statement statement = connection.createStatement()) {
-            Optional<Department> foundDepartment = getById(department.getId());
-            if (foundDepartment.isPresent()) {
-                statement.executeUpdate(String.format(
-                        SQL_QUERY_UPDATE,
-                        department.getName(),
-                        department.getLocation(),
-                        department.getId().toString()));
-            } else {
-                statement.executeUpdate(String.format(
-                        SQL_QUERY_INSERT,
-                        department.getId().toString(),
-                        department.getName(),
-                        department.getLocation())
-                );
-            }
-            return department;
+             PreparedStatement statement = connection.prepareStatement(SQL_QUERY_INSERT)) {
+            statement.setObject(1, id);
+            statement.setString(2, name);
+            statement.setString(3, location);
+            statement.executeUpdate();
         } catch (SQLException e) {
-            throw new DaoException("Something went wrong at save", e);
+            throw new DaoException("Something went wrong at insert", e);
+        }
+    }
+
+    private void update(BigInteger id, String name, String location) {
+        try (Connection connection = ConnectionSource.instance().createConnection();
+             PreparedStatement statement = connection.prepareStatement(SQL_QUERY_UPDATE)) {
+            statement.setString(1, name);
+            statement.setString(2, location);
+            statement.setObject(3, id);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Something went wrong at update", e);
         }
     }
 
     @Override
     public void delete(Department department) {
         try (Connection connection = ConnectionSource.instance().createConnection();
-             Statement statement = connection.createStatement()) {
-            statement.executeUpdate(String.format(SQL_QUERY_DELETE, department.getId().toString()));
+             PreparedStatement statement = connection.prepareStatement(SQL_QUERY_DELETE)) {
+            statement.setObject(1, department.getId());
+            statement.executeUpdate();
         } catch (SQLException e) {
             throw new DaoException("Something went wrong at delete", e);
         }
@@ -103,8 +116,8 @@ public class DepartmentDaoImpl implements DepartmentDao {
             BigInteger id = getBigInteger(resultSet, COLUMN_ID);
             String name = resultSet.getString(COLUMN_NAME);
             String location = resultSet.getString(COLUMN_LOCATION);
-            return new Department(id, name, location);
 
+            return new Department(id, name, location);
         } catch (SQLException e) {
             throw new DaoException("Something went wrong at createDepartment", e);
         }

@@ -1,8 +1,9 @@
 package com.epam.rd.autocode.service;
 
 import com.epam.rd.autocode.comparator.ComparatorByDepartmentName;
+import com.epam.rd.autocode.dao.DaoFactory;
+import com.epam.rd.autocode.dao.DepartmentDao;
 import com.epam.rd.autocode.dao.EmployeeDao;
-import com.epam.rd.autocode.dao.EmployeeDaoImpl;
 import com.epam.rd.autocode.domain.Department;
 import com.epam.rd.autocode.domain.Employee;
 
@@ -10,7 +11,15 @@ import java.util.Comparator;
 import java.util.List;
 
 public class EmployeeServiceImpl implements EmployeeService {
-    private static final EmployeeDao employeeDao = new EmployeeDaoImpl();
+    private static final DaoFactory daoFactory = new DaoFactory();
+
+    private static final DepartmentDao departmentDao = daoFactory.departmentDAO();
+    private static final EmployeeDao employeeDao = daoFactory.employeeDAO();
+
+    static {
+        employeeDao.setDepartmentDao(departmentDao);
+    }
+
 
     @Override
     public List<Employee> getAllSortByHireDate(Paging paging) {

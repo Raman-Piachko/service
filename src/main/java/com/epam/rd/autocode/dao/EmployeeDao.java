@@ -12,4 +12,6 @@ public interface EmployeeDao extends Dao<Employee, BigInteger> {
     List<Employee> getByManager(Employee employee);
 
     Employee getByIdWithFullChain(BigInteger id);
+
+    void setDepartmentDao(DepartmentDao departmentDao);
 }
