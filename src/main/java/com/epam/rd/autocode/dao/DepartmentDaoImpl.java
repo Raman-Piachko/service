@@ -50,7 +50,7 @@ public class DepartmentDaoImpl implements DepartmentDao {
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 Department department = new Department(
-                        new BigInteger(resultSet.getString(COLUMN_ID)),
+                        getBigInteger(resultSet, COLUMN_ID),
                         resultSet.getString(COLUMN_NAME),
                         resultSet.getString(COLUMN_LOCATION));
                 departments.add(department);

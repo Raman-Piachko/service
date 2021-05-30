@@ -47,7 +47,11 @@ public class EmployeeDaoImpl implements EmployeeDao {
     private static final String COLUMN_MANAGER = "manager";
     private static final String COLUMN_DEPARTMENT = "department";
 
-    private static DepartmentDao departmentDao;
+    private DepartmentDao departmentDao;
+
+    public EmployeeDaoImpl(DepartmentDao dao) {
+        departmentDao = dao;
+    }
 
     @Override
     public Optional<Employee> getById(BigInteger id) {
@@ -208,11 +212,6 @@ public class EmployeeDaoImpl implements EmployeeDao {
         }
     }
 
-    @Override
-    public void setDepartmentDao(DepartmentDao depDao) {
-        departmentDao = depDao;
-    }
-
     private Employee createEmployee(ResultSet resultSet) {
         try {
             Position position = getPosition(resultSet);
@@ -222,7 +221,8 @@ public class EmployeeDaoImpl implements EmployeeDao {
             BigDecimal salary = resultSet.getBigDecimal(COLUMN_SALARY);
             BigInteger managerId = getBigInteger(resultSet, COLUMN_MANAGER);
             BigInteger depatmentId = getBigInteger(resultSet, COLUMN_DEPARTMENT);
-            Employee manager = getManagerById(managerId);
+            Employee manager = getManagerById(managerId)
+                    .orElse(null);
             Department department = departmentDao
                     .getById(depatmentId)
                     .orElse(null);
@@ -232,14 +232,14 @@ public class EmployeeDaoImpl implements EmployeeDao {
         }
     }
 
-    private Employee getManagerById(BigInteger id) {
-        Employee employee = null;
+    private Optional<Employee> getManagerById(BigInteger id) {
+        Optional<Employee> employee = Optional.empty();
         try (Connection connection = ConnectionSource.instance().createConnection();
              PreparedStatement statement = connection.prepareStatement(SQL_QUERY_SELECT_BY_ID)) {
             statement.setLong(1, id.longValue());
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
-                employee = createManager(resultSet);
+                employee = Optional.of(createManager(resultSet));
             }
             return employee;
         } catch (SQLException e) {
